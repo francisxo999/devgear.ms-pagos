@@ -1,0 +1,65 @@
+server:
+  port: 8088
+
+spring:
+  application:
+    name: ms-pagos
+
+  datasource:
+    url: jdbc:mysql://db-pagos:3306/pagos_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8&useUnicode=true
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://login.microsoftonline.com/e5372bf0-c5e3-4286-887c-79069f209c1f/v2.0
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all                 # pagos.intentos exige confirmación de TODAS las réplicas en sincronía
+      properties:
+        enable.idempotence: true
+        max.block.ms: 3000
+        request.timeout.ms: 4000
+        delivery.timeout.ms: 8000
+        linger.ms: 0
+    consumer:
+      group-id: payment-velocity-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+devgear:
+  kafka:
+    topic-pagos: pagos.intentos
+    concurrency: 3
+  antifraude:
+    max-intentos: 3         # intentos de pago...
+    ventana-segundos: 10    # ...dentro de esta ventana...
+    bloqueo-minutos: 30     # ...bloquean al cliente este tiempo
+  webpay:
+    commerce-code: ${WEBPAY_COMMERCE_CODE:597055555532}
+    # URL del frontend a la que Webpay devuelve al cliente (debe ser la URL real del frontend desplegado)
+    return-url: ${WEBPAY_RETURN_URL:http://localhost:4200/pago/resultado}
+  carrito:
+    base-url: ${CARRITO_API_BASE_URL:http://app-carrito:8082}
+  ordenes:
+    base-url: ${ORDENES_API_BASE_URL:http://app-ordenes:8084}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics

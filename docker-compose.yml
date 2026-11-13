@@ -1,0 +1,32 @@
+services:
+  db-pagos:
+    image: mysql:8.0
+    container_name: mysql-pagos
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: pagos_db
+    ports:
+      - "3312:3306"
+    volumes:
+      - db_pagos_data:/var/lib/mysql
+
+  app-pagos:
+    build: .
+    container_name: devgear-ms-pagos-1
+    restart: always
+    ports:
+      - "8088:8088"
+    depends_on:
+      - db-pagos
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db-pagos:3306/pagos_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-host.docker.internal:9092}
+      CARRITO_API_BASE_URL: ${CARRITO_API_BASE_URL:-http://host.docker.internal:8082}
+      ORDENES_API_BASE_URL: ${ORDENES_API_BASE_URL:-http://host.docker.internal:8084}
+      WEBPAY_RETURN_URL: ${WEBPAY_RETURN_URL:-http://localhost:4200/pago/resultado}
+
+volumes:
+  db_pagos_data:
