@@ -39,6 +39,10 @@ public class Pago {
     // Orden creada en ms-ordenes una vez aprobado el pago
     private Long ordenId;
 
+    // Medio de pago informado por Webpay, ej. "Webpay Plus · Tarjeta de crédito terminada en 6623"
+    @Column(length = 200)
+    private String metodoPago;
+
     @Column(nullable = false)
     private Instant creadoEn;
 
@@ -58,6 +62,8 @@ public class Pago {
     public void setMonto(Long monto) { this.monto = monto; }
     public String getEstado() { return estado; }
     public void setEstado(String estado) { this.estado = estado; }
+    public String getMetodoPago() { return metodoPago; }
+    public void setMetodoPago(String metodoPago) { this.metodoPago = metodoPago; }
     public Long getOrdenId() { return ordenId; }
     public void setOrdenId(Long ordenId) { this.ordenId = ordenId; }
     public Instant getCreadoEn() { return creadoEn; }

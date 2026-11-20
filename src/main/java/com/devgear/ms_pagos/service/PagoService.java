@@ -94,6 +94,7 @@ public class PagoService {
             WebpayGateway.TransaccionConfirmada r = webpay.confirmar(token);
             if ("AUTHORIZED".equals(r.status())) {
                 pago.setEstado(Pago.APROBADO);
+                pago.setMetodoPago(WebpayGateway.describirMedioDePago(r.tipoPago(), r.ultimosDigitos()));
                 log.info("Pago aprobado: {} por ${}", pago.getBuyOrder(), pago.getMonto());
             } else {
                 pago.setEstado(Pago.RECHAZADO);
@@ -107,7 +108,7 @@ public class PagoService {
         String mensaje = null;
         if (Pago.APROBADO.equals(pago.getEstado()) && pago.getOrdenId() == null) {
             try {
-                OrdenCreadaDTO orden = ordenClient.crearOrden(bearerToken);
+                OrdenCreadaDTO orden = ordenClient.crearOrden(bearerToken, pago.getMetodoPago());
                 pago.setOrdenId(orden.id());
                 pago.setActualizadoEn(Instant.now());
                 pagos.save(pago);
