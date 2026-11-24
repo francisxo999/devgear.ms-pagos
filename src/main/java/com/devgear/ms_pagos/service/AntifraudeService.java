@@ -8,6 +8,7 @@ import com.devgear.ms_pagos.model.EstadoPagoCliente;
 import com.devgear.ms_pagos.model.IntentoPago;
 import com.devgear.ms_pagos.repository.EstadoPagoClienteRepository;
 import com.devgear.ms_pagos.repository.IntentoPagoRepository;
+import com.devgear.ms_pagos.telemetria.TelemetriaPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,16 +32,19 @@ public class AntifraudeService {
 
     private final IntentoPagoRepository intentos;
     private final EstadoPagoClienteRepository estados;
+    private final TelemetriaPublisher telemetria;
     private final int maxIntentos;
     private final long ventanaSegundos;
     private final long bloqueoMinutos;
 
     public AntifraudeService(IntentoPagoRepository intentos, EstadoPagoClienteRepository estados,
+                             TelemetriaPublisher telemetria,
                              @Value("${devgear.antifraude.max-intentos:3}") int maxIntentos,
                              @Value("${devgear.antifraude.ventana-segundos:10}") long ventanaSegundos,
                              @Value("${devgear.antifraude.bloqueo-minutos:30}") long bloqueoMinutos) {
         this.intentos = intentos;
         this.estados = estados;
+        this.telemetria = telemetria;
         this.maxIntentos = maxIntentos;
         this.ventanaSegundos = ventanaSegundos;
         this.bloqueoMinutos = bloqueoMinutos;
@@ -85,6 +89,7 @@ public class AntifraudeService {
         intento.setParticion(particion);
         intento.setOffsetKafka(offset);
         intentos.saveAndFlush(intento);
+        telemetria.publicar(evento.eventId(), "PAGO_INTENTO", evento.idCliente(), null, null, evento.monto());
 
         long enVentana = intentos.countByIdClienteAndOcurridoEnBetween(
                 evento.idCliente(), ocurrio.minus(Duration.ofSeconds(ventanaSegundos)), ocurrio);
@@ -105,6 +110,7 @@ public class AntifraudeService {
             estado.setBloqueadoHasta(ahora.plus(Duration.ofMinutes(bloqueoMinutos)));
             log.error("ALERTA ANTIFRAUDE: cliente {} hizo {} intentos de pago en {} s -> bloqueado {} min (hasta {})",
                     evento.idCliente(), enVentana, ventanaSegundos, bloqueoMinutos, estado.getBloqueadoHasta());
+            telemetria.publicar(evento.eventId() + "-bloqueo", "PAGO_BLOQUEADO", evento.idCliente(), null, null, null);
         } else {
             log.info("Intento de pago de {} procesado ({} en la ventana de {} s) <- {}-{}",
                     evento.idCliente(), enVentana, ventanaSegundos, particion, offset);
